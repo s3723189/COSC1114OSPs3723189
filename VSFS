@@ -1,0 +1,69 @@
+#!/usr/bin/python3
+import sys
+import os.path
+
+
+def main():
+    arg = sys.argv  
+
+    arg_len = len(arg) - 1
+    
+    if arg_len == 4:
+        if arg[1].lower() == 'copyin':
+            copyin(arg[2], arg[3], arg[4])
+
+
+
+
+    
+
+    
+
+def copyin(fs_name, external_file, interal_file):
+    
+
+    check_file(external_file)
+        
+
+    return 0
+
+#
+def check_file(file_name):
+    boolen = False
+    
+    if not file_name.find("/"):
+        
+        path = "./" + file_name 
+    else:
+        
+        path = file_name
+        
+    stderr = sys.stderr
+
+    if not os.path.isfile(path):
+
+        stderr.write("Error code 1: No such file or directory \n")
+        return False
+    
+    boolean = os.path.isfile(path)
+
+    return boolean
+    
+#this method validates the file system inputted
+def validate_fs(file_system):
+    if not os.path.isfile(file_system + ".notes"):
+        stderr = sys.stderr
+        stderr.write("Error code 1: No such file or directory \n")
+        return -1
+    
+
+    return 0
+
+
+
+if __name__ == "__main__":
+    main()
+
+
+    
+
