@@ -4,25 +4,65 @@ import sys
 import os.path
 
 
+class File_Note:
+    def __init__(self, name, directory):
+        self.dir = directory
+        self.name = name
+        self.notes = []
+        
+    
+class Directory:
+    def __init__(self, name, parent_directory = None):
+        
+        self.name = name
+        self.parent = parent_directory
+        self.files = []
+
+    def append_file(self, file):
+        self.files.append(file)
+
+   
+
+    #returns directory or regular file
+    def get_file(self, file_name):
+        
+        for element in self.files:
+            if element.name == file_name:
+                return element
+        
+        return None 
+
+    def has_file(self, file_name):    
+        for element in self.files:
+            if element.name == file_name:
+                return True
+        
+        return False 
+    
+    def go_to_parent(self):
+        return self.parent
+
+
+
+#RootDirectory
+
+
+
+root = Directory(name = "root")
+
 def main():
     arg = sys.argv  
+
+    #RootDirectory 
+    
+
+
     validate_fs(arg[2])
     arg_len = len(arg) - 1
     
     if arg_len == 4:
         if arg[1].lower() == 'copyin':
             copyin(arg[2], arg[3], arg[4])
-
-
-
-class File_Note:
-    def __init__(self, directory):
-        self.dir = directory
-        self.notes = []
-        
-    
-
-    
 
 def copyin(fs_name, external_file, interal_file):
     
@@ -31,6 +71,37 @@ def copyin(fs_name, external_file, interal_file):
         
 
     return 0
+
+
+#Find file in directory
+
+def validate_file(path):
+    has_file = False
+    cur_dir = root
+    read_file = path.split("/")
+    file = read_file[-1]
+
+    
+    directories = read_file[:-1]
+
+    for i in directories:
+        
+        if cur_dir.has_file(i):
+            cur_dir = cur_dir.get_file(i)
+
+    if cur_dir.has_file(file):
+        has_file = True
+
+
+    return has_file
+    
+
+
+
+
+
+
+
 
 #
 def check_file(file_name):
@@ -82,29 +153,25 @@ def validate_fs(file_system):
         for line in lines:
             if line[0] == "@" :
                 #Check if there is a directory associated
-                file_entry = line[1:].strip()
-                if file_entry.find("/") > 0:
-                    file_entry = file_entry.rsplit('/',1)
-                    
-                    if file_entry[0] not in directories:
-                        print(f"Error code 1: Invalid directory, {file_entry[0]}")
-
-                    print(file_entry)
-                  
-                if in_file == False and line[1:].strip() not in read_files:
-                    
-                    print(f"started_reading file {line[1:]}")
+                file_entry = line.strip()        
+                if in_file == False:
+                    if not validate_file(file_entry):
+                        stderr.write("Error code 1: Invalid file \n")
+                        return -1
+                    file = File_Note(name, file_entry.split("/")[-1])
                     in_file = True
-                    files.append(File_Note(base_dir))
-                    read_files.append(line[1:].strip())
-                elif in_file == False and line[1:].strip() in read_files:
-                    print(f"invalid, already read {line[1:].strip()}")
                 else:
+                    root.append_file(file)
                     in_file = False
 
+
+
+
             if line[0] == " " and in_file:
-                files[-1].notes.append(line[1:])
+                file.notes.append(line[1:])
             
+
+
             if line[0] == "=" and line.strip()[-1] == "/":
                 dir_name = line[1:]
                 dir_name = dir_name[:-1]
@@ -113,18 +180,17 @@ def validate_fs(file_system):
                 directories.append(dir_name)
                 in_file = False
                 
-            print(read_files)
 
+            for i in files:
+                print(i.notes)
 
                 
                 
 
-                    
+                
 
-            
-            
+    return directories, files
 
-    return 0
 
 
 

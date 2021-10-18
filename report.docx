@@ -1,0 +1,12 @@
+COSC 1114 Operating Systems Principles
+Semester 2, 2021
+Programming Assignment 2
+s3723189 - Gabriel Cary Lat 
+
+
+Tests.
+
+using the example FS file in the specfications.
+Reading the file and using the file format also in the specifications. Various tests where done to ensure that
+a "note" was read correctly as well as directories. Various runs were undertaken to ensure that invalid
+notes and directories were not made.
