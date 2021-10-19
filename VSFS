@@ -6,9 +6,13 @@ import os.path
 
 class File_Note:
     def __init__(self, name, directory):
+        
         self.dir = directory
         self.name = name
         self.notes = []
+
+    def __str__(self):
+        return "File"
         
     
 class Directory:
@@ -21,7 +25,8 @@ class Directory:
     def append_file(self, file):
         self.files.append(file)
 
-   
+    def __str__(self):
+        return "Directory"
 
     #returns directory or regular file
     def get_file(self, file_name):
@@ -39,6 +44,8 @@ class Directory:
         
         return False 
     
+    
+
     def go_to_parent(self):
         return self.parent
 
@@ -73,39 +80,126 @@ def copyin(fs_name, external_file, interal_file):
     return 0
 
 
-#Find file in directory
+#Split filepath into File and directory
+
+#Check if directory is valid 
 
 def validate_file(path):
-    has_file = False
+    
+    valid = True
     cur_dir = root
     read_file = path.split("/")
     file = read_file[-1]
 
     
     directories = read_file[:-1]
-
+    
     for i in directories:
         
         if cur_dir.has_file(i):
+            
             cur_dir = cur_dir.get_file(i)
-
+        else:
+            valid = False
+    
     if cur_dir.has_file(file):
-        has_file = True
-
-
-    return has_file
+        valid = False
     
 
+    to_root()
+
+    return valid
+    
+def delete_file(directory, file):
+    index = 0
+    for i in directory.files:
+        
+        if i.name == file:
+            del directory.files[i]
+            break
+        i += 1
+
+def list_fs():
+    global root
+    
+    for i in root.files:
+        print(i.name)
+
+    
+    to_root()
+
+
+def add_file_to_fs(path, ext_file):
+    global root
+    read_file = path.split("/")
+    
+    file = read_file[-1]
+
+    
+    directories = read_file[:-1]
+    
+    for i in directories:
+        
+        if root.name == i:
+            break
+        else:
+            root = root.get_file(i)
+
+    if root.has_file(file):
+        return False
+    root.files.append(ext_file)
+
+    to_root()
+
+    return True
+
+#Fix this
+def add_dir_to_fs(path):
+    global root
+    
+    dir_name = path[1:]
+    dir_name = dir_name[:-1]
+    dir_name = dir_name[:-1]
+
+
+    directories = dir_name.split("/")
+   
+    for i in directories[:1]:
+        if not root.has_file(i):
+            root.append_file(Directory(i, root))
+        
+        root = root.get_file(i)
+
+    if root.has_file(directories[-1]):
+        to_root()
+        return False
+    
+    
+
+    to_root()
+        
+        
+
+    
+    return True
 
 
 
+def to_root():
+    global root
+    while root.parent is not None:
+        root = root.go_to_parent()
+
+
+   
+    return 0
 
 
 
 
 #
 def check_file(file_name):
-    boolen = False
+    boolean = False
     
     if not file_name.find("/"):
         
@@ -127,12 +221,13 @@ def check_file(file_name):
     
 #this method validates the file system inputted
 def validate_fs(file_system):
+    global root
     stderr = sys.stderr
     name = file_system + ".notes"
     directories = []
     base_dir = "root"
     read_files = []
-    files = []
+    
     if not os.path.isfile(name):
         
         stderr.write("Error code 1: No such file or directory \n")
@@ -151,45 +246,58 @@ def validate_fs(file_system):
         del lines[0]
         
         for line in lines:
+            
             if line[0] == "@" :
                 #Check if there is a directory associated
-                file_entry = line.strip()        
-                if in_file == False:
-                    if not validate_file(file_entry):
-                        stderr.write("Error code 1: Invalid file \n")
-                        return -1
-                    file = File_Note(name, file_entry.split("/")[-1])
-                    in_file = True
-                else:
-                    root.append_file(file)
+                
+                file_entry = line[1:].strip()
+                if in_file == True:
+                    
+                    add_file_to_fs(previous_entry, file)
                     in_file = False
 
+                if in_file == False:
+                    
+                    if not validate_file(file_entry):
+                        
+                        stderr.write("Error code 1: Invalid file \n")
+                        #return -1
+                    else:
+                        
+                        file = File_Note(file_entry.split("/")[-1], "test")
+                        
+                        in_file = True
+                        previous_entry = file_entry
+                
 
 
 
-            if line[0] == " " and in_file:
+
+            if line[0] == " " and in_file == True:
+               
                 file.notes.append(line[1:])
             
 
 
             if line[0] == "=" and line.strip()[-1] == "/":
-                dir_name = line[1:]
-                dir_name = dir_name[:-1]
-                dir_name = dir_name[:-1]
-                print(f"directory {dir_name}")
-                directories.append(dir_name)
-                in_file = False
-                
+               
+                add_dir_to_fs(line)
+                if in_file == True:
+                    
+                    add_file_to_fs(previous_entry, file)
+                    in_file = False
 
-            for i in files:
-                print(i.notes)
 
                 
                 
 
+        list_fs()
+                
                 
 
-    return directories, files
+                
+
+    return directories
 
 
 
