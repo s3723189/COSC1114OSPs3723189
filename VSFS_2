@@ -1,0 +1,139 @@
+#!/usr/bin/python3
+from os import read, write
+import sys
+import os.path
+
+
+
+
+class File_Note:
+    def __init__(self, path):
+        splitter = path.rsplit("/",1)
+        dir = "root"
+        if path.find("/") > 0:
+            dir = splitter[0]
+        self.dir = dir
+        self.name = splitter[-1]
+        self.notes = []
+
+    def __str__(self):
+        return "File"
+
+def main():
+    arg = sys.argv  
+
+    #RootDirectory 
+    
+
+
+    validate_fs(arg[2])
+
+directories = []
+notes = []
+#Check if directory is valid
+def validate_directory(path):
+    #Remove first ("=") and last character ("/")
+    valid = False
+    parent_dir = False
+    dir = path[1:]
+    dir = dir[:-1]
+    
+    #Checks if the directory being validated is a sub directory
+    if dir.find("/") > 0:
+        parent_dir = True
+
+    dir_split = dir.rsplit('/',1)
+    print(dir_split)
+    if parent_dir:
+        if dir_split[0] in directories and dir not in directories:
+            directories.append(dir)
+            valid = True
+    else:
+        if dir not in directories:
+            directories.append(dir)
+            valid = True
+
+    return valid
+
+#Validate the file system
+
+
+def validate_fs(file_system):
+    stderr = sys.stderr
+
+    name = file_system + ".notes"
+
+    if not os.path.isfile(name):
+        stderr.write("Error code 1: No such file or directory \n")
+        return -1
+
+    with open(name) as f:
+        lines = f.readlines()
+
+        in_file = False
+
+
+        if lines[0].strip() != "NOTES V1.0":
+            stderr.write("Error code 1: Invalid filesystem format \n")
+            return -1 
+        del lines[0]
+
+        for line in lines:
+            if line[0] == "@":
+                if in_file == True:
+                    notes.append(file)
+                    in_file == False
+
+
+                if in_file == False and valid_note(line[1:]):
+                    file = File_Note(line[1:])
+                    in_file = True
+
+            if line[0] == " " and in_file == True:
+                file.notes.append(line[1:].strip())
+
+            if line[0] == "=" and line.strip()[-1] == "/":
+                if not validate_directory(line.strip()):
+                    stderr.write("Error code 1: Invalid directory \n")
+                if in_file == True:
+                    notes.append(file)
+                    in_file == False
+
+        f.close()
+    print(directories)
+    print(notes)
+                    
+
+                       
+                
+
+
+
+
+#Check if file is valid
+def valid_note(path):
+    valid = True
+    splitter = path.rsplit("/", 1)
+    file_name = splitter[-1]
+    file_path = splitter[0]
+
+    if file_path == file_name:
+        file_path == "root"
+
+    for i in notes:
+        if i.name == file_name and i.dir == file_path:
+            valid = False
+
+    if file_path not in directories:
+        valid = False
+    return valid
+
+    
+    
+
+    
+
+
+if __name__ == "__main__":
+    main()
+

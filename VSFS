@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from os import read
+from os import read, write
 import sys
 import os.path
 
@@ -73,16 +73,76 @@ def main():
 
 def copyin(fs_name, external_file, interal_file):
     
+    global root
 
-    check_file(external_file)
-        
 
+    ext_valid = check_file(external_file)
+    
+    if_valid, if_file_name = check_if_exist(interal_file)
+    print(ext_valid, if_valid)
+    if not ext_valid or not if_valid:
+        return
+    splitter = external_file.split("/")
+    
+    
+    internal_splitter = interal_file.split("/")
+    int_dir = internal_splitter[:-1]
+    
+    
+
+    notes = write_as_note(external_file)
+
+    
+
+    for i in int_dir:
+        if root.has_file(i):
+            root = root.get_file(i)
+
+    root.get_file(if_file_name).notes = notes
+
+
+    to_root()
+
+
+    list_fs()
     return 0
 
 
-#Split filepath into File and directory
+#Check if file name is in system.
 
-#Check if directory is valid 
+def check_if_exist(path):
+    global root
+    valid = False
+    
+    if path == "." or path == ".." or path == "/":
+        return False
+    if path[0] == "/":
+        path = path[1:]
+    file_name = path
+    if path.find("/") > 0:
+        splitter = path.split("/")
+        directories = splitter[:-1]
+        file_name = splitter[-1]
+
+        for i in directories:
+            if root.has_file(i):
+                root = root.get_file(i)
+            else:
+                return False
+
+    if root is not None and root.has_file(file_name):
+        valid = True
+
+    to_root()
+    return valid , file_name
+
+    
+        
+        
+
+
+#Check if directory is valid before filesystem is used
+
 
 def validate_file(path):
     
@@ -124,9 +184,29 @@ def list_fs():
     
     for i in root.files:
         print(i.name)
+    
+    print(root.files[2].notes)
 
     
     to_root()
+
+def write_as_note(external_file):
+    note = []
+    with open(external_file) as f:
+        lines = f.readlines()
+        
+        for line in lines:
+            #Make sure record is only 255 a line 
+            string = line[:255]
+            note.append(string)
+
+
+        
+
+        f.close()
+
+    return note 
+
 
 
 def add_file_to_fs(path, ext_file):
@@ -153,6 +233,8 @@ def add_file_to_fs(path, ext_file):
 
     return True
 
+
+
 #Fix this
 def add_dir_to_fs(path):
     global root
@@ -178,8 +260,6 @@ def add_dir_to_fs(path):
 
     to_root()
         
-        
-
     
     return True
 
@@ -290,8 +370,8 @@ def validate_fs(file_system):
 
                 
                 
-
-        list_fs()
+        f.close()
+        print("Validated successfully")
                 
                 
 
