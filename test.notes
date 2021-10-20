@@ -3,10 +3,16 @@ NOTES V1.0
  This is the first note. Notice the leading space.
  Another line
 @note2
- The next note is empty.
+ this is a test,
+ to be the very best
 @IF
- Empty
+ this is a test,
+ to be the very best
 @emptynote
 =dir1/
 =dir2/
-=dir2/dir3/
+=dir3/
+=dir3/dir5/
+=dir3/dir5/dir7/
+=test/
+=test/test/
