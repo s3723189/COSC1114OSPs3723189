@@ -40,12 +40,16 @@ def main():
             rm(arg[2],arg[3])
         if arg[1].lower() == "rmdir":
             rmdir(arg[2], arg[3])
+    elif arg_len == 2:
+        if arg[1].lower() == "defrag":
+            print("ASDASDASD")
+            update_fs(arg[2])
 
 
     
 stderr = sys.stderr
 directories = ["root"]
-
+read_filesystem = []
 notes = []
 #Check if directory is valid
 def validate_directory(path):
@@ -136,7 +140,12 @@ def validate_fs(file_system):
                     in_file = True
 
             if line[0] == " " and in_file == True:
-                file.notes.append(line.strip()[:75])
+                
+                
+                string = line.strip()[:254] + '\n'
+                
+                
+                file.notes.append(string)
 
             if line[0] == "=" and line.strip()[-1] == "/":
                 if not validate_directory(line.strip()):
@@ -144,26 +153,34 @@ def validate_fs(file_system):
                 if in_file == True:
                     notes.append(file)
                     in_file = False
+            read_filesystem.append(line)
 
         f.close()
-
+        print("done")
         if in_file == True:
             notes.append(file)
             in_file = False
 
-    print(directories)
-    print([i.name for i in notes])
+    #print(read_filesystem)
+    #print([i.name for i in notes])
                     
 
 #Update the filesystem's file 
+#Later used for defrag
 
 def update_fs(file_system):
     name = file_system + ".notes"
     
+   
+    directories.sort()
+    directories_updated = [x for x in directories if "#" not in x]
+    directories_updated.remove("root")
+    directories_updated.insert(0,"root")
+    print(directories_updated)
     with open(name, 'w') as f:
         f.write("NOTES V1.0\n")
 
-        for dir in directories:
+        for dir in directories_updated:
             if dir != "root":
                 string = "=" + dir + "/\n"
                 print(dir[0])
@@ -173,38 +190,80 @@ def update_fs(file_system):
                 f.write(string)
                 
                 path = dir 
-                if path[0] == "#":
-                    path = path[1:]
-                print(path)
+                
+                
                 for note in notes:
                     if note.dir == path:
-
-                        string = "@" + path + "/" + note.name + "\n"
-                        if note.is_deleted == True:
-                            string = "#" + path + "/" + note.name + "\n"
-                            
+                        string = "@" + path + "/" + note.name + "\n"  
                         f.write(string)
                         for record in note.notes:
-                            string = " " + record + "\n"
-                            if note.is_deleted == True:
-                                string = "#" + record + "\n"
+                            string = " " + record 
                             f.write(string)
             else:
                 for note in notes:
                     if note.dir == "root":
                             string = "@" + note.name + "\n"
-                            if note.is_deleted == True:
-                                string = "#" + note.name + "\n"
                             f.write(string)
                             for record in note.notes:
-                                string = " " + record + "\n"
-                                if note.is_deleted == True:
-                                    string = "#" + record + "\n"
+                                string = " " + record 
                                 f.write(string)
         f.close()
 
                         
-        
+def update_fs2(file_system):
+    
+    for note in notes:
+        if note.is_deleted == True:
+            index = 0
+            string = "@" + note.dir + "/" + note.name
+            if note.dir == "root":
+                string = "@" + note.name
+            note_read = False
+            for line in read_filesystem:
+                if note_read == True and line[0] != " ":
+                    note_read = False
+                if string == line.rstrip():
+                    print("GOES IN")
+                    read_filesystem[index] = "#" + note.dir + "/" + note.name + "\n"
+                    note_read = True
+                
+                
+                if line[0] == " " and note_read == True:
+                    print("changed")
+                    read_filesystem[index] = "#" + read_filesystem[index][1:]
+
+                
+
+                index += 1
+            
+
+    for dir in directories:
+        index = 0
+        for line in read_filesystem:
+            
+            
+            
+            string = "=" + dir[1:] + "/"
+            if string == line.rstrip("\n"):
+                read_filesystem[index] = dir + "/" + "\n"
+
+            
+            index += 1
+
+    name = file_system + ".notes"
+    
+    with open(name, 'w') as f:
+        f.write("NOTES V1.0\n")
+
+        for line in read_filesystem:
+            
+            f.write(line)
+
+        f.close()
+
+    return 0
+
+
 
             
 
@@ -221,8 +280,9 @@ def copyin(fs_name,external_file, interal_file):
         return -1
 
     edit_note(interal_file, external_file)
-    update_fs(fs_name)
-    print([i.notes for i in notes])
+    update_fs2(fs_name)
+
+    
     return 0
 
 def copyout(fs_name, internal_file, external_file):
@@ -272,7 +332,7 @@ def rm(fs_name, internal_file, is_mkdir = False):
             print("deleted")
             break
     if not is_mkdir:
-        update_fs(fs_name)
+        update_fs2(fs_name)
 
 def rmdir(fs_name, internal_path):
 
@@ -303,7 +363,7 @@ def rmdir(fs_name, internal_path):
 
     print(directories)
 
-    update_fs(fs_name)
+    update_fs2(fs_name)
 
     return 0
 
@@ -317,6 +377,7 @@ def mkdir(file_system, internal_directory):
 
 #Edit notes
 def edit_note(path, external_file):
+    
     splitter = path.rsplit("/", 1)
     file_name = splitter[-1]
     file_path = splitter[0]
@@ -332,8 +393,48 @@ def edit_note(path, external_file):
 
     for note in notes:
         if file_path == note.dir and file_name == note.name:
-            note.notes = updated_note
+
+            #note.notes = updated_note
+            delete_note(note) 
             print("EDITED")
+    string = "@" + file_name
+    if file_path != "root":
+        string = "@" + file_path + "/" + file_name 
+    print(read_filesystem[-1])
+    print(string)
+    read_filesystem.append(string + "\n")
+    for line in updated_note:
+        read_filesystem.append(" " + line + "\n")
+    return updated_note
+
+
+
+#Delete note
+
+def delete_note(note):
+    file_path = "@" + note.name
+    file_read = False
+    if note.dir != "root":
+        file_path = "@" + note.dir + note.name
+    i = 0
+    for line in read_filesystem:
+        
+        if file_read == True and line[0] == " ":
+            read_filesystem[i] = "#" + line[1:]
+
+        if file_read == True and line[0] != " ":
+            break
+        if line.rstrip() == file_path:
+            read_filesystem[i] = "#" + read_filesystem[i][1:]
+            file_read = True
+
+        
+        i += 1
+
+
+
+         
+    
 
 
 #Check if the file exists
@@ -349,16 +450,11 @@ def in_file_exists(path):
 
     if file_path == file_name and is_path == False:
         file_path = "root"
-    print(file_name, file_path)
-    for i in notes:
-        
-        if i.name == file_name and i.dir == file_path:
-            print("ARG")
-            valid = True
-            break
+    
+    
 
-    if file_path not in directories:
-        valid = False
+    if file_path  in directories:
+        valid = True
     
     return valid
 
