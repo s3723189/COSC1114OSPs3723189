@@ -163,7 +163,7 @@ def validate_fs(file_system):
                 
                 
                 string = line.strip()[:254] + '\n'
-                
+                print(len(string))
                 
                 file.notes.append(string)
 
@@ -173,7 +173,10 @@ def validate_fs(file_system):
                 if in_file == True:
                     notes.append(file)
                     in_file = False
-            read_filesystem.append(line)
+            if len(line) < 255:
+                read_filesystem.append(line)
+            else:
+                read_filesystem.append(line[:255] + "\n")
 
         f.close()
         print("done")
@@ -256,7 +259,7 @@ def update_fs2(file_system):
 
                 index += 1
             
-    print(read_filesystem)
+    
     for dir in directories:
         index = 0
         for line in read_filesystem:
@@ -306,6 +309,7 @@ def copyin(fs_name,external_file, interal_file):
         return -1
 
     edit_note(interal_file, external_file)
+    
     update_fs2(fs_name)
 
     
@@ -323,13 +327,13 @@ def copyout(fs_name, internal_file, external_file):
 
     with open(external_file, 'w') as f:
         for record in note:
-            f.write(record + "\n")
+            f.write(record)
 
 
         f.close()
 
 
-
+    update_fs2(fs_name)
     return 0
 
 def rm(fs_name, internal_file, is_mkdir = False):
@@ -421,10 +425,14 @@ def mkdir(file_system, internal_directory):
 def edit_note(path, external_file):
     
     splitter = path.rsplit("/", 1)
+    print(path)
     file_name = splitter[-1]
     file_path = splitter[0]
+    is_path = False
+    if path.find("/") > 0:
+        is_path = True
     updated_note = []
-    if file_path == file_name:
+    if file_path == file_name and not is_path:
         file_path = "root"
     with open(external_file) as f:
         lines = f.readlines()
@@ -440,7 +448,9 @@ def edit_note(path, external_file):
             delete_note(note) 
             print("EDITED")
     string = "@" + file_name
+    
     if file_path != "root":
+        
         string = "@" + file_path + "/" + file_name 
     
     read_filesystem.append(string + "\n")
@@ -465,7 +475,7 @@ def delete_note(note):
 
         if file_read == True and line[0] != " ":
             break
-        print(file_path, line)
+        
         if line.rstrip() == file_path:
             read_filesystem[i] = "#" + read_filesystem[i][1:]
             file_read = True
