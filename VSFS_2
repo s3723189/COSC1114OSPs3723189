@@ -2,10 +2,11 @@
 from os import read, write
 import sys
 import os.path
-
-
-
-
+import os
+import stat
+from pwd import getpwuid
+from grp import getgrgid
+import datetime
 class File_Note:
     def __init__(self, path):
         splitter = path.rsplit("/",1)
@@ -44,7 +45,8 @@ def main():
         if arg[1].lower() == "defrag":
             print("ASDASDASD")
             update_fs(arg[2])
-
+        if arg[1].lower() == "list":
+            list_FS(arg[2])
 
     
 stderr = sys.stderr
@@ -137,7 +139,7 @@ def validate_fs(file_system):
 
 
         if lines[0].strip() != "NOTES V1.0":
-            stderr.write("Error code 1: Invalid filesystem formatS \n")
+            stderr.write("Error code 1: Invalid filesystem format \n")
             exit(-1)
             
         del lines[0]
@@ -148,10 +150,15 @@ def validate_fs(file_system):
                 exit(-1)
 
             if line[0] == "@":
+                
                 if in_file == True:
                     notes.append(file)
                     in_file = False
-
+                
+                
+                if line[1:].strip() in [x.name for x in notes]:
+                    stderr.write("Error Code 1: Invalid Filesystem format \n")
+                    exit(-1)
 
                 if in_file == False and valid_note(line.strip()[1:]) == True:
                     
@@ -163,13 +170,16 @@ def validate_fs(file_system):
                 
                 
                 string = line.strip()[:254] + '\n'
-                print(len(string))
+                
                 
                 file.notes.append(string)
 
             if line[0] == "=" and line.strip()[-1] == "/":
-                if not validate_directory(line.strip()):
+                dir = line.strip()
+                if not validate_directory(dir) or dir in directories:
                     stderr.write("Error code 1: Invalid directory \n")
+                    exit(-1)
+                
                 if in_file == True:
                     notes.append(file)
                     in_file = False
@@ -179,7 +189,7 @@ def validate_fs(file_system):
                 read_filesystem.append(line[:255] + "\n")
 
         f.close()
-        print("done")
+        
         if in_file == True:
             notes.append(file)
             in_file = False
@@ -246,13 +256,13 @@ def update_fs2(file_system):
                 if note_read == True and line[0] != " ":
                     note_read = False
                 if string == line.rstrip():
-                    print("GOES IN")
+                    
                     read_filesystem[index] = "#" + note.dir + "/" + note.name + "\n"
                     note_read = True
                 
                 
                 if line[0] == " " and note_read == True:
-                    print("changed")
+                    
                     read_filesystem[index] = "#" + read_filesystem[index][1:]
 
                 
@@ -297,7 +307,99 @@ def update_fs2(file_system):
             
 
 
-# copyin function
+# functions
+
+def list_FS(file_system): 
+    name = file_system + ".notes"
+    valid_external_dir(name)
+    
+
+    file_owner = os.stat(name).st_uid
+    file_group = os.stat(name).st_gid
+    file_owner = getpwuid(file_owner).pw_name
+    file_group = getgrgid(file_group).gr_name
+    time_created = os.path.getmtime(name)
+    time_formatted = datetime.datetime.fromtimestamp(time_created)
+    time_formatted = time_formatted.strftime('%b %d %H:%M')
+    #getpwuid(stat(filename).st_uid).pw_name
+    groups_att = return_file_perms(name)
+
+    print(groups_att, file_owner, file_group, time_formatted)
+
+
+    directories.sort()
+    directories_updated = [x for x in directories if "#" not in x]
+    directories_updated.remove("root")
+    directories_updated.insert(0,"root")
+    
+    
+    for dir in directories_updated:
+        links = dir.find("/")
+        if links == -1:
+            links = 1
+
+        size = get_dir_size(dir)
+        if dir != "root":
+            string = f"d{groups_att} {links} {file_owner} {file_group} {size} {time_formatted} {dir}"
+            print(string)
+
+        for note in notes:
+            if note.dir == dir:
+                
+                string = f"-{groups_att} {links} {file_owner} {file_group} {size} {time_formatted} {dir}/{note.name}"
+                print(string)
+            
+
+def return_file_perms(path):
+    fs_att = ""
+    perms = os.stat(path).st_mode
+    if(perms & stat.S_IRUSR):
+        fs_att += "r"
+    else:
+        fs_att += "-"
+    
+    if(perms & stat.S_IWUSR):
+        fs_att += "w"
+    else:
+        fs_att += "-"
+    
+    if(perms & stat.S_IXUSR):
+        fs_att += "x"
+    else:
+        fs_att += "-"
+
+    if(perms & stat.S_IRGRP):
+        fs_att += "r"
+    else:
+        fs_att += "-"
+    
+    if(perms & stat.S_IWGRP):
+        fs_att += "w"
+    else:
+        fs_att += "-"
+    
+    if(perms & stat.S_IXGRP):
+        fs_att += "x"
+    else:
+        fs_att += "-"
+    if(perms & stat.S_IROTH):
+        fs_att += "r"
+    else:
+        fs_att += "-"
+    
+    if(perms & stat.S_IWOTH):
+        fs_att += "w"
+    else:
+        fs_att += "-"
+    
+    if(perms & stat.S_IXOTH):
+        fs_att += "x"
+    else:
+        fs_att += "-"
+    
+    return fs_att
+
+
 
 def copyin(fs_name,external_file, interal_file):
     
@@ -413,12 +515,14 @@ def mkdir(file_system, internal_directory):
         valid = validate_directory(string_path, mk = True)
         
     if valid == False:
-        return -1
+        stderr.write("Error Code 1: Directory already exists \n")
+        exit(1)
 
 
     update_fs2(file_system)
     
     return 0 
+
 
 
 #Edit notes
@@ -458,6 +562,16 @@ def edit_note(path, external_file):
         read_filesystem.append(" " + line + "\n")
     return updated_note
 
+def get_dir_size(dir):
+    size = 0
+
+    for note in notes:
+        if note.dir[0:len(dir)] == dir and dir != "root":
+            size += len(note.notes)
+        elif dir == "root":
+            size += len(note.notes)
+    
+    return size
 
 
 #Delete note
