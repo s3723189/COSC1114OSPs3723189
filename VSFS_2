@@ -52,11 +52,16 @@ directories = ["root"]
 read_filesystem = []
 notes = []
 #Check if directory is valid
-def validate_directory(path):
+def validate_directory(path, mk = False):
     
     dir = path
     valid = False
     parent_dir = False
+    print(path)
+    #If ID from command line and has / at the beginning
+    #Remove first char
+    if path[0] == "/":
+        dir = path[1:]
     #Remove first ("=") and last character ("/")
     if path[0] == "=" and path[-1] == "/":
 
@@ -72,17 +77,27 @@ def validate_directory(path):
     if parent_dir:
         if dir_split[0] in directories and dir not in directories:
             directories.append(dir)
+            if mk == True:
+                read_filesystem.append("=" + dir + "/" +"\n")
             valid = True
     else:
         if dir not in directories:
             directories.append(dir)
+            if mk == True:
+                read_filesystem.append("=" + dir + "/" + "\n")
             valid = True
 
     return valid
 
 
-def valid_external_dir(file_name):
+def valid_external_dir(file_name, cout = False):
     boolean = False
+
+    if cout == True:
+        path = file_name.rsplit("/",1)
+        if len(path) == 1:
+            return True
+        path = path[0]
     
     if file_name[0] != "/":
         
@@ -135,8 +150,7 @@ def validate_fs(file_system):
                 if in_file == False and valid_note(line.strip()[1:]) == True:
                     
                     file = File_Note(line.strip()[1:])
-                    print("approved")
-                    print(file.name, file.dir)
+                    
                     in_file = True
 
             if line[0] == " " and in_file == True:
@@ -211,7 +225,6 @@ def update_fs(file_system):
 
                         
 def update_fs2(file_system):
-    
     for note in notes:
         if note.is_deleted == True:
             index = 0
@@ -236,16 +249,22 @@ def update_fs2(file_system):
 
                 index += 1
             
-
+    print(read_filesystem)
     for dir in directories:
         index = 0
         for line in read_filesystem:
             
             
             
-            string = "=" + dir[1:] + "/"
+            string = "=" + dir.rstrip()[1:] + "/"
+            
+
             if string == line.rstrip("\n"):
-                read_filesystem[index] = dir + "/" + "\n"
+                if dir[0] != "#":
+                    read_filesystem[index] = "=" + dir + "/" + "\n"
+                else:
+                    read_filesystem[index] = dir + "/" + "\n"
+                
 
             
             index += 1
@@ -287,7 +306,7 @@ def copyin(fs_name,external_file, interal_file):
 
 def copyout(fs_name, internal_file, external_file):
     in_valid = in_file_exists(internal_file)
-    out_valid = valid_external_dir(external_file)
+    out_valid = valid_external_dir(external_file, cout = True)
     
     if not in_valid or not out_valid:
         print("Error")
@@ -329,7 +348,7 @@ def rm(fs_name, internal_file, is_mkdir = False):
     for note in notes:
         if note.dir == file_path and note.name == file_name:
             note.is_deleted = True
-            print("deleted")
+            
             break
     if not is_mkdir:
         update_fs2(fs_name)
@@ -347,31 +366,48 @@ def rmdir(fs_name, internal_path):
     
     
     for note in notes:
-        if path in note.dir:
+        if path in note.dir[0:len(path)]:
             note_path = note.dir + "/" + note.name
             rm(fs_name, note_path, is_mkdir=True)
 
     i = 0
     for dir in directories:
         
-        if path in dir:
+        if path in dir[0:len(path)]:
             
             
             directories[i] = "#" + dir
         i += 1
     
 
-    print(directories)
+    
 
     update_fs2(fs_name)
 
     return 0
 
 def mkdir(file_system, internal_directory):
-    if not validate_directory(internal_directory):
-        print("error")
+    
+    valid = False
+    dir = internal_directory
+    if internal_directory[0] == "/":
+        dir = internal_directory[1:]
+    string_path = ""
+    splitter = dir.split("/")
+
+    string_path = splitter[0]
+    splitter = splitter[1:]
+    valid = validate_directory(string_path, mk=True)
+    for i in splitter:
+        string_path += "/" + i
+        print(string_path)
+        validate_directory(string_path, mk = True)
+        
+    if valid == False:
         return -1
-    update_fs(file_system)
+
+
+    update_fs2(file_system)
     return 0 
 
 
@@ -400,8 +436,7 @@ def edit_note(path, external_file):
     string = "@" + file_name
     if file_path != "root":
         string = "@" + file_path + "/" + file_name 
-    print(read_filesystem[-1])
-    print(string)
+    
     read_filesystem.append(string + "\n")
     for line in updated_note:
         read_filesystem.append(" " + line + "\n")
