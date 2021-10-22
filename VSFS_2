@@ -73,9 +73,9 @@ def validate_directory(path, mk = False):
         parent_dir = True
 
     dir_split = dir.rsplit('/',1)
-    
+    parent_dir_path = dir_split[0]
     if parent_dir:
-        if dir_split[0] in directories and dir not in directories:
+        if parent_dir_path in directories[0:len(parent_dir_path)] and dir not in directories:
             directories.append(dir)
             if mk == True:
                 read_filesystem.append("=" + dir + "/" +"\n")
@@ -86,7 +86,8 @@ def validate_directory(path, mk = False):
             if mk == True:
                 read_filesystem.append("=" + dir + "/" + "\n")
             valid = True
-
+    
+    
     return valid
 
 
@@ -136,11 +137,16 @@ def validate_fs(file_system):
 
 
         if lines[0].strip() != "NOTES V1.0":
-            stderr.write("Error code 1: Invalid filesystem format \n")
-            return -1 
+            stderr.write("Error code 1: Invalid filesystem formatS \n")
+            exit(-1)
+            
         del lines[0]
 
         for line in lines:
+            if line[0] != "@" and line[0] != " " and line[0] != "=" and line[0] != "#":
+                stderr.write("Error Code 1: Invalid Filesystem format \n")
+                exit(-1)
+
             if line[0] == "@":
                 if in_file == True:
                     notes.append(file)
@@ -225,6 +231,7 @@ def update_fs(file_system):
 
                         
 def update_fs2(file_system):
+    print("updating")
     for note in notes:
         if note.is_deleted == True:
             index = 0
@@ -255,10 +262,10 @@ def update_fs2(file_system):
         for line in read_filesystem:
             
             
+            string = "=" + dir.rstrip() + "/"
+            if dir[0] == "#":
+                string = "=" + dir[1:].rstrip() + "/"
             
-            string = "=" + dir.rstrip()[1:] + "/"
-            
-
             if string == line.rstrip("\n"):
                 if dir[0] != "#":
                     read_filesystem[index] = "=" + dir + "/" + "\n"
@@ -334,8 +341,6 @@ def rm(fs_name, internal_file, is_mkdir = False):
     is_path = False
     if internal_file.find("/") > 0:
         is_path = True
-    
-    
 
 
     splitter = internal_file.rsplit("/", 1)
@@ -401,13 +406,14 @@ def mkdir(file_system, internal_directory):
     for i in splitter:
         string_path += "/" + i
         print(string_path)
-        validate_directory(string_path, mk = True)
+        valid = validate_directory(string_path, mk = True)
         
     if valid == False:
         return -1
 
 
     update_fs2(file_system)
+    
     return 0 
 
 
@@ -450,7 +456,7 @@ def delete_note(note):
     file_path = "@" + note.name
     file_read = False
     if note.dir != "root":
-        file_path = "@" + note.dir + note.name
+        file_path = "@" + note.dir + "/" + note.name
     i = 0
     for line in read_filesystem:
         
@@ -459,6 +465,7 @@ def delete_note(note):
 
         if file_read == True and line[0] != " ":
             break
+        print(file_path, line)
         if line.rstrip() == file_path:
             read_filesystem[i] = "#" + read_filesystem[i][1:]
             file_read = True
@@ -467,15 +474,14 @@ def delete_note(note):
         i += 1
 
 
-
-         
-    
-
-
 #Check if the file exists
 def in_file_exists(path):
     valid = False
     is_path = False
+
+    if path[-1] == "/" or path[-2:] == ".." or path[-1] == ".":
+        stderr.write("Error code 1: Invalid internal file name \n")
+        exit(1)
 
     if path.find("/") > 0:
         is_path = True

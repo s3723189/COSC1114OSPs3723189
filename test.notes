@@ -1,32 +1,16 @@
 NOTES V1.0
-@note1
+@testing
  This is the first note. Notice the leading space.
  Another line
-@note2
- this is a test,
- to be the very best
-@emptynote
-@note4
- This is the first note. Notice the leading space.
- Another line
-@note5
- This is the first note. Notice the leading space.
- Another line
-=dir1/
-=dir3/
-=dir3/dir5/
-=dir3/dir5/dir7/
 =test/
-@test/note5
+=test2/
+=atest/
+#atest/testing/
+#atest/testing/
+#atest/testing/
+#atest/testing/
+#atest/testing/
+=atest/testing/
+@atest/testing
  This is the first note. Notice the leading space.
  Another line
-=test/gabes/
-@test/gabes/gabes
- This is the first note. Notice the leading space.
- Another line
-=test/test/
-@test/test/note5
- This is the first note. Notice the leading space.
- Another line
-=test/test/test/
-=test/test/test/test/
