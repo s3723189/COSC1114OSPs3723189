@@ -1,0 +1,124 @@
+--Test Strategy--
+
+To test all the various commands, we will attempt to test them
+For each test, there will be a command that is run to test the output and the exit code
+
+Testers can follow along by following the Test instructions and the specific 
+commands shown to get the exact same result. Command will be shown above the result
+
+
+We Assume the Program "VSFS" and the Filesystem "FS.notes" are in the same directory
+and that there is an external file named "external"
+
+Using the commands on an empty FS, we can test the program
+#First assume that the FS will be empty. The FS will also need the .notes extenstion to work
+
+
+
+Test 1. Input any command with ./VSFS <command_name> <FS_name> <More args>
+Command:  ./VSFS list FS
+Result 1. Leads to an "Invalid VSFS - This is not a notes file" error and an exit code of 1
+Command:  ./VSFS list noFS
+Result 2. File doesnt exist 
+
+Test 2. Following the previous test, add "NOTES V1.0" to the first line and add a new lime
+    inputting any command will finally work
+
+./VSFS list FS
+Result 2. No Output (File is empty) Exit Code 0:
+
+Test 3. Add a file using ./VSFS copyin <fs_name> <ext_file> <in_file>
+./VSFS copyin FS external internal
+3.1 Correct internal and external file - No output Exit code: 0
+./VSFS copyin FS external adirectory/internal
+3.1 Adding an invalid internal path - No such file or directory Exit code: 1
+./VSFS copyin FS external .
+3.2 Adding an invalid internal file name - Invalid internal file name Exit Code: 1
+./VSFS copyin FS fakedir/external internal OR 
+./VSFS copyin FS fakefile internal
+3.3 Adding an invalid external path/file - No such external file or directory Eixt code : 1
+
+
+Test 4. Adding a valid ext_file to the same in_file name using 
+./VSFS copyin <fs_name> <ext_file> <in_file>
+
+./VSFS copyin FS external internal
+Result 4 - Previous existing file and records have a '#' appended at the start. 
+Append internal file to end of filesystem
+    Not Output Exit code : 0
+
+Test 5. Outputing to ext_file ./VSFS copyin <fs_name> <ext_file> <in_file>
+./VSFS copyout FS internal external
+5.1 Valid in_file/ext_file - No output Exit Code: 0
+./VSFS copyout FS internal fakepath/external
+5.2 Invalid ext_file/path - No such external file or directory Exit Code: 1
+./VSFS copyout FS fakeinternal  external
+5.3 Invalid in_file/path - Internal File does not exist Exit Code: 1
+
+
+Test 6. Making a directory ./VSFS mkdir <fs_name> <dir_file>
+./VSFS mkdir FS dir
+6.1 Valid dir - No Output Exit Code: 0
+./VSFS mkdir FS dir2/dir3/dir4
+6.2 Valid path - No Output Exit Code: 0
+./VSFS mkdir FS dir 
+OR
+./VSFS mkdir FS dir2/dir3/dir4
+6.3 Existing dir_file/path - Directory already exists Exit Code: 1
+
+Test 6.5 Add a file to the directory
+./VSFS copyin FS external dir/internal
+./VSFS copyin FS external dir2/dir3/dir4/internal
+6.5.1 Valid External and Internal files - No Output Exit Code: 0
+
+
+Test 7. Removing a file ./VSFS rm <fs_name> <in_file>
+./VSFS rm FS internal
+7.1 Valid file - No Output Exit Code: 0
+./VSFS rm FS internal
+7.2 Invalid file - Internal File does not exist Exit Code: 1
+./VSFS rm FS dir/internal
+./VSFS rm FS dir2/dir3/dir4/internal
+7.3 Valid file in directory - No Output Exit Code: 0
+./VSFS rm FS dir/internal
+./VSFS rm FS dir2/dir3/dir4/internal
+7.4 Invalid file in directory - Internal File does not exist Exit Code: 1
+ 
+
+**Readd the notes that were in directories
+
+./VSFS copyin FS external dir/internal
+./VSFS copyin FS external dir2/dir3/dir4/internal
+
+
+Test 8. Removing a directory ./VSFS rmdir <fs_name> <dir>
+./VSFS rmdir FS dir
+8.1 Valid dir - No output Exit Code: 0
+./VSFS rmdir FS dir
+8.2 Invalid dir - Directory does not exist Exit Code: 1
+./VSFS rmdir FS dir2
+8.3 Valid dir with subdir - No output Exit Code: 0
+
+Test 9. Defrag via /VSFS defrag <fs_name> 
+./VSFS defrag FS 
+Result 9 - "Cleans" the filesystem and orders (similar to ls -lR) Exit Code :0 
+
+Test 10. List via /VSFS list <fs_name>
+./VSFS list FS
+Result 10 - First lists all root files and directory and it's files following the
+    AAAAAA NNN OOOOOOOO GGGGGGGG SSSSSSSS DATETIME [PATH/]FILENAME format
+    Exit Code: 0
+
+#Add notes and dirs back 
+./VSFS mkdir FS dir
+./VSFS mkdir FS dir2/dir3/dir4
+./VSFS copyin FS external dir/internal
+./VSFS copyin FS external dir2/dir3/dir4/internal
+./VSFS list FS
+
+drw-r--r-- 3 s3723189 s3723189 4 Oct 24 05:30 dir
+-rw-r--r-- 1 s3723189 s3723189 4 Oct 24 05:30 dir/internal
+drw-r--r-- 2 s3723189 s3723189 2 Oct 24 05:30 dir2
+drw-r--r-- 1 s3723189 s3723189 2 Oct 24 05:30 dir2/dir3
+drw-r--r-- 1 s3723189 s3723189 2 Oct 24 05:30 dir2/dir3/dir4
+-rw-r--r-- 1 s3723189 s3723189 2 Oct 24 05:30 dir2/dir3/dir4/internal
