@@ -2,389 +2,725 @@
 from os import read, write
 import sys
 import os.path
-
-
+import os
+import stat
+from pwd import getpwuid
+from grp import getgrgid
+import datetime
+import errno
 class File_Note:
-    def __init__(self, name, directory):
-        
-        self.dir = directory
-        self.name = name
+    def __init__(self, path):
+        splitter = path.rsplit("/",1)
+        dir = "root"
+        if path.find("/") > 0:
+            dir = splitter[0]
+        self.dir = dir
+        self.name = splitter[-1]
         self.notes = []
+        self.is_deleted = False
 
     def __str__(self):
         return "File"
-        
-    
-class Directory:
-    def __init__(self, name, parent_directory = None):
-        
-        self.name = name
-        self.parent = parent_directory
-        self.files = []
-
-    def append_file(self, file):
-        self.files.append(file)
-
-    def __str__(self):
-        return "Directory"
-
-    #returns directory or regular file
-    def get_file(self, file_name):
-        
-        for element in self.files:
-            if element.name == file_name:
-                return element
-        
-        return None 
-
-    def has_file(self, file_name):    
-        for element in self.files:
-            if element.name == file_name:
-                return True
-        
-        return False 
-    
-    
-
-    def go_to_parent(self):
-        return self.parent
-
-
-
-#RootDirectory
-
-
-
-root = Directory(name = "root")
 
 def main():
     arg = sys.argv  
 
     #RootDirectory 
-    
-
-
-    validate_fs(arg[2])
     arg_len = len(arg) - 1
     
+    if arg_len < 2:
+        stderr.write("Invalid command arguments \n")
+        exit(-1)
+    if ".notes" not in arg[2][-6:]:
+        arg[2] = arg[2] + ".notes"
+    validate_fs(arg[2])
     if arg_len == 4:
         if arg[1].lower() == 'copyin':
-            copyin(arg[2], arg[3], arg[4])
-
-def copyin(fs_name, external_file, interal_file):
-    
-    global root
-
-
-    ext_valid = check_file(external_file)
-    
-    if_valid, if_file_name = check_if_exist(interal_file)
-    print(ext_valid, if_valid)
-    if not ext_valid or not if_valid:
-        return
-    splitter = external_file.split("/")
-    
-    
-    internal_splitter = interal_file.split("/")
-    int_dir = internal_splitter[:-1]
-    
-    
-
-    notes = write_as_note(external_file)
-
-    
-
-    for i in int_dir:
-        if root.has_file(i):
-            root = root.get_file(i)
-
-    root.get_file(if_file_name).notes = notes
-
-
-    to_root()
-
-
-    list_fs()
-    return 0
-
-
-#Check if file name is in system.
-
-def check_if_exist(path):
-    global root
-    valid = False
-    
-    if path == "." or path == ".." or path == "/":
-        return False
-    if path[0] == "/":
-        path = path[1:]
-    file_name = path
-    if path.find("/") > 0:
-        splitter = path.split("/")
-        directories = splitter[:-1]
-        file_name = splitter[-1]
-
-        for i in directories:
-            if root.has_file(i):
-                root = root.get_file(i)
-            else:
-                return False
-
-    if root is not None and root.has_file(file_name):
-        valid = True
-
-    to_root()
-    return valid , file_name
-
-    
-        
-        
-
-
-#Check if directory is valid before filesystem is used
-
-
-def validate_file(path):
-    
-    valid = True
-    cur_dir = root
-    read_file = path.split("/")
-    file = read_file[-1]
-
-    
-    directories = read_file[:-1]
-    
-    for i in directories:
-        
-        if cur_dir.has_file(i):
             
-            cur_dir = cur_dir.get_file(i)
+            copyin(arg[2], arg[3], arg[4])
+        elif arg[1].lower() == 'copyout':
+            copyout(arg[2], arg[3], arg[4])
         else:
-            valid = False
-    
-    if cur_dir.has_file(file):
-        valid = False
-    
+            stderr.write("Invalid command arguments\n")
+            exit(1)
+    elif arg_len == 3:
+        if arg[1].lower() == "mkdir":
+            mkdir(arg[2], arg[3])
+        elif arg[1].lower() == "rm":
+            rm(arg[2],arg[3])
+        elif arg[1].lower() == "rmdir":
+            rmdir(arg[2], arg[3])
+        else:
+            stderr.write("Invalid command arguments\n")
+            exit(1)
+    elif arg_len == 2:
+        if arg[1].lower() == "defrag":
+            
+            update_fs(arg[2])
+        elif arg[1].lower() == "list":
+            list_FS(arg[2])
+        else:
+            stderr.write("Invalid command arguments \n")
+            exit(1)
+    else:
+            stderr.write("Invalid command arguments \n")
+            exit(1)
+    exit(0)
 
-    to_root()
+stderr = sys.stderr
+directories = ["root"]
+read_filesystem = []
+notes = []
+#Check if directory is valid
+def validate_directory(path, mk = False):
+    
+    dir = path
+    valid = False
+    parent_dir = False
+    
+    #If ID from command line and has / at the beginning
+    #Remove first char
+    if path[0] == "/":
+        dir = path[1:]
+    #Remove first ("=") and last character ("/")
+    if path[0] == "=" and path[-1] == "/":
 
+        dir = path[1:]
+        dir = dir[:-1]
+    
+    #Checks if the directory being validated is a sub directory
+    if dir.find("/") > 0:
+        parent_dir = True
+    
+    dir_split = dir.rsplit('/',1)
+    parent_dir_path = dir_split[0]
+    
+    if parent_dir:
+        if parent_dir_path in directories[0:len(parent_dir_path)] and dir not in directories:
+            directories.append(dir)
+            if mk == True:
+                read_filesystem.append("=" + dir + "/" +"\n")
+            valid = True
+    else:
+        if dir not in directories:
+            directories.append(dir)
+            if mk == True:
+                read_filesystem.append("=" + dir + "/" + "\n")
+            valid = True
+    
+    
     return valid
-    
-def delete_file(directory, file):
-    index = 0
-    for i in directory.files:
-        
-        if i.name == file:
-            del directory.files[i]
-            break
-        i += 1
-
-def list_fs():
-    global root
-    
-    for i in root.files:
-        print(i.name)
-    
-    print(root.files[2].notes)
-
-    
-    to_root()
-
-def write_as_note(external_file):
-    note = []
-    with open(external_file) as f:
-        lines = f.readlines()
-        
-        for line in lines:
-            #Make sure record is only 255 a line 
-            string = line[:255]
-            note.append(string)
 
 
-        
-
-        f.close()
-
-    return note 
-
-
-
-def add_file_to_fs(path, ext_file):
-    global root
-    read_file = path.split("/")
-    
-    file = read_file[-1]
-
-    
-    directories = read_file[:-1]
-    
-    for i in directories:
-        
-        if root.name == i:
-            break
-        else:
-            root = root.get_file(i)
-
-    if root.has_file(file):
-        return False
-    root.files.append(ext_file)
-
-    to_root()
-
-    return True
-
-
-
-#Fix this
-def add_dir_to_fs(path):
-    global root
-    
-    dir_name = path[1:]
-    dir_name = dir_name[:-1]
-    dir_name = dir_name[:-1]
-
-
-    directories = dir_name.split("/")
-   
-    for i in directories[:1]:
-        if not root.has_file(i):
-            root.append_file(Directory(i, root))
-        
-        root = root.get_file(i)
-
-    if root.has_file(directories[-1]):
-        to_root()
-        return False
-    
-    
-
-    to_root()
-        
-    
-    return True
-
-
-
-def to_root():
-    global root
-    while root.parent is not None:
-        root = root.go_to_parent()
-
-
-   
-    return 0
-
-
-
-
-#
-def check_file(file_name):
+def valid_external_dir(file_name, cout = False):
     boolean = False
-    
-    if not file_name.find("/"):
+    if file_name[-1] == "/":
+        stderr.write("Invalid external directory")
+        exit(1)
+    if cout == True:
+        path = file_name.rsplit("/",1)
+        if len(path) == 1:
+            return True
+        
+        if os.path.isdir(path[0]):
+            
+            return True
+        else:
+            return False
+        path = path[0]
+        
+    if file_name[0] != "/":
         
         path = "./" + file_name 
     else:
         
         path = file_name
-        
-    stderr = sys.stderr
-
+    
     if not os.path.isfile(path):
 
-        stderr.write("Error code 1: No such file or directory \n")
-        return False
+        stderr.write("No such external file or directory \n")
+        exit(1)
     
     boolean = os.path.isfile(path)
 
     return boolean
-    
-#this method validates the file system inputted
+
+
+#Validate the file system
+
 def validate_fs(file_system):
-    global root
     stderr = sys.stderr
-    name = file_system + ".notes"
-    directories = []
-    base_dir = "root"
-    read_files = []
     
+    name = file_system 
+
     if not os.path.isfile(name):
+        stderr.write("Error code 1: Invalid VSFS \n")
+        exit(1)
         
-        stderr.write("Error code 1: No such file or directory \n")
-        return -1
-    
 
     with open(name) as f:
-        in_file = False
-        
         lines = f.readlines()
-        
+
+        in_file = False
+
+
         if lines[0].strip() != "NOTES V1.0":
-            stderr.write("Error code 1: Invalid filesystem format \n")
-            return -1 
-
-        del lines[0]
-        
-        for line in lines:
+            stderr.write("Invalid VSFS - This is not a notes file\n")
+            exit(1)
             
-            if line[0] == "@" :
-                #Check if there is a directory associated
+        del lines[0]
+
+        for line in lines:
+            if line[0] != "@" and line[0] != " " and line[0] != "=" and line[0] != "#":
+                stderr.write("Invalid VSFS - Invalid format\n")
+                exit(1)
+
+            if line[0] == "@":
                 
-                file_entry = line[1:].strip()
                 if in_file == True:
-                    
-                    add_file_to_fs(previous_entry, file)
+                    notes.append(file)
                     in_file = False
-
-                if in_file == False:
-                    
-                    if not validate_file(file_entry):
-                        
-                        stderr.write("Error code 1: Invalid file \n")
-                        #return -1
-                    else:
-                        
-                        file = File_Note(file_entry.split("/")[-1], "test")
-                        
-                        in_file = True
-                        previous_entry = file_entry
                 
+                
+                if line[1:].strip() in [x.name for x in notes]:
+                    stderr.write("Invalid VSFS - Duplicate note/file \n")
+                    exit(1)
 
-
-
+                if not valid_note(line.strip()[1:]):
+                    stderr.write("Invalid VSFS - Invalid note \n")
+                    exit(1)
+                if in_file == False and valid_note(line.strip()[1:]) == True:
+                    
+                    file = File_Note(line.strip()[1:])
+                    
+                    in_file = True
 
             if line[0] == " " and in_file == True:
-               
-                file.notes.append(line[1:])
+                
+                
+                string = line.strip()[:254] + '\n'
+                
+                
+                file.notes.append(string)
+
+            if line[0] == "=" and line.strip()[-1] == "/":
+                dir = line.strip()
+                if not validate_directory(dir) or dir in directories:
+                    stderr.write("Invalid VSFS - Invalid directory\n")
+                    exit(1)
+                
+                if in_file == True:
+                    notes.append(file)
+                    in_file = False
+            if len(line) < 255:
+                read_filesystem.append(line)
+            else:
+                read_filesystem.append(line[:255] + "\n")
+
+        f.close()
+        
+        if in_file == True:
+            notes.append(file)
+            in_file = False
+
+    
+                    
+
+#Update the filesystem's file 
+#Later used for defrag
+
+def update_fs(file_system):
+    name = file_system 
+    
+   
+    directories.sort()
+    directories_updated = [x for x in directories if "#" not in x]
+    directories_updated.remove("root")
+    directories_updated.insert(0,"root")
+    
+    with open(name, 'w') as f:
+        f.write("NOTES V1.0\n")
+
+        for dir in directories_updated:
+            if dir != "root":
+                string = "=" + dir + "/\n"
+                
+                if dir[0] == "#":
+                    
+                    string = dir + "/ \n"
+                f.write(string)
+                
+                path = dir 
+                
+                
+                for note in notes:
+                    if note.dir == path:
+                        string = "@" + path + "/" + note.name + "\n"  
+                        f.write(string)
+                        for record in note.notes:
+                            string = " " + record 
+                            f.write(string)
+            else:
+                for note in notes:
+                    if note.dir == "root":
+                            string = "@" + note.name + "\n"
+                            f.write(string)
+                            for record in note.notes:
+                                string = " " + record 
+                                f.write(string)
+        f.close()
+
+
+                        
+def update_fs2(file_system):
+    
+    for note in notes:
+        if note.is_deleted == True:
+            index = 0
+            string = "@" + note.dir + "/" + note.name
+            if note.dir == "root":
+                string = "@" + note.name
+            note_read = False
+            for line in read_filesystem:
+                if note_read == True and line[0] != " ":
+                    note_read = False
+                if string == line.rstrip():
+                    if note.dir != "root":
+                        read_filesystem[index] = "#" + note.dir + "/" + note.name + "\n"
+                    else:
+                        read_filesystem[index] = "#" + note.name + "\n"
+                    note_read = True
+                
+                
+                if line[0] == " " and note_read == True:
+                    
+                    read_filesystem[index] = "#" + read_filesystem[index][1:]
+
+                
+
+                index += 1
+            
+    
+    for dir in directories:
+        index = 0
+        for line in read_filesystem:
+            
+            
+            string = "=" + dir.rstrip() + "/"
+            if dir[0] == "#":
+                string = "=" + dir[1:].rstrip() + "/"
+            
+            if string == line.rstrip("\n"):
+                if dir[0] != "#":
+                    read_filesystem[index] = "=" + dir + "/" + "\n"
+                else:
+                    read_filesystem[index] = dir + "/" + "\n"
+                
+
+            
+            index += 1
+
+    name = file_system 
+    
+    with open(name, 'w') as f:
+        f.write("NOTES V1.0\n")
+
+        for line in read_filesystem:
+            
+            f.write(line)
+
+        f.close()
+
+    return 0
+
+
+
             
 
 
-            if line[0] == "=" and line.strip()[-1] == "/":
-               
-                add_dir_to_fs(line)
-                if in_file == True:
-                    
-                    add_file_to_fs(previous_entry, file)
-                    in_file = False
+# functions
+
+def list_FS(file_system): 
+    name = file_system
+    valid_external_dir(name)
+    
+
+    file_owner = os.stat(name).st_uid
+    file_group = os.stat(name).st_gid
+    file_owner = getpwuid(file_owner).pw_name
+    file_group = getgrgid(file_group).gr_name
+    time_created = os.path.getmtime(name)
+    time_formatted = datetime.datetime.fromtimestamp(time_created)
+    time_formatted = time_formatted.strftime('%b %d %H:%M')
+    #getpwuid(stat(filename).st_uid).pw_name
+    groups_att = return_file_perms(name)
+
+   
 
 
-                
-                
+    directories.sort()
+    directories_updated = [x for x in directories if "#" not in x]
+    directories_updated.remove("root")
+    directories_updated.insert(0,"root")
+    
+    
+    for dir in directories_updated:
+        links = len([x for x in directories if x[0:len(dir)] == dir]) - 1
+        if links == 0:
+            links = 1
+        
+        size = get_dir_size(dir)
+        
+        if dir != "root":
+            string = f"d{groups_att} {links} {file_owner} {file_group} {size} {time_formatted} {dir}"
+            print(string)
+
+        for note in notes:
+            if note.dir == dir:
+                links = 1
+                if dir != "root":
+                    string = f"-{groups_att} {links} {file_owner} {file_group} {size} {time_formatted} {dir}/{note.name}"
+                else:
+                    string = f"-{groups_att} {links} {file_owner} {file_group} {size} {time_formatted} {note.name}"
+                print(string)
+            
+
+def return_file_perms(path):
+    fs_att = ""
+    perms = os.stat(path).st_mode
+    if(perms & stat.S_IRUSR):
+        fs_att += "r"
+    else:
+        fs_att += "-"
+    
+    if(perms & stat.S_IWUSR):
+        fs_att += "w"
+    else:
+        fs_att += "-"
+    
+    if(perms & stat.S_IXUSR):
+        fs_att += "x"
+    else:
+        fs_att += "-"
+
+    if(perms & stat.S_IRGRP):
+        fs_att += "r"
+    else:
+        fs_att += "-"
+    
+    if(perms & stat.S_IWGRP):
+        fs_att += "w"
+    else:
+        fs_att += "-"
+    
+    if(perms & stat.S_IXGRP):
+        fs_att += "x"
+    else:
+        fs_att += "-"
+    if(perms & stat.S_IROTH):
+        fs_att += "r"
+    else:
+        fs_att += "-"
+    
+    if(perms & stat.S_IWOTH):
+        fs_att += "w"
+    else:
+        fs_att += "-"
+    
+    if(perms & stat.S_IXOTH):
+        fs_att += "x"
+    else:
+        fs_att += "-"
+    
+    return fs_att
+
+
+
+def copyin(fs_name,external_file, interal_file):
+    
+    in_valid = in_file_exists(interal_file)
+    out_valid = valid_external_dir(external_file)
+    
+        
+    if not in_valid or not out_valid:
+        stderr.write("No such file or directory \n")
+        exit(1)
+
+    edit_note(interal_file, external_file)
+    
+    update_fs2(fs_name)
+
+    
+    return 0
+
+def copyout(fs_name, internal_file, external_file):
+    in_valid = in_file_exists(internal_file, cout = True)
+    out_valid = valid_external_dir(external_file, cout = True)
+    
+    if not in_valid:
+        stderr.write("Internal File does not exist \n")
+        exit(1)
+
+    if not out_valid:
+        stderr.write("No such external file or directory \n")
+        exit(1)
+
+    note = get_note(internal_file)
+
+    with open(external_file, 'w') as f:
+        for record in note:
+            f.write(record)
+
+
         f.close()
-        print("Validated successfully")
-                
-                
-
-                
-
-    return directories
 
 
+    update_fs2(fs_name)
+    return 0
+
+def rm(fs_name, internal_file, is_mkdir = False):
+    
+    in_valid = in_file_exists(internal_file, cout = True)
+    
+    if not in_valid:
+        stderr.write("File does not exist \n")
+        exit(-1)
+    is_path = False
+    if internal_file.find("/") > 0:
+        is_path = True
+
+
+    splitter = internal_file.rsplit("/", 1)
+    file_name = splitter[-1]
+    file_path = splitter[0]
+
+    if file_path == file_name and is_path == False:
+        
+        file_path = "root"
+    for note in notes:
+        if note.dir == file_path and note.name == file_name:
+            note.is_deleted = True
+            
+            break
+    if not is_mkdir:
+        update_fs2(fs_name)
+
+def rmdir(fs_name, internal_path):
+
+    exists = validate_directory(internal_path)
+
+    if exists:
+        print("Directory does not exist")
+        exit(1)
+    path = internal_path
+    if path[0] == "/":
+        path = path[1:]
+    
+    
+    for note in notes:
+        if path in note.dir[0:len(path)]:
+            note_path = note.dir + "/" + note.name
+            rm(fs_name, note_path, is_mkdir=True)
+
+    i = 0
+    for dir in directories:
+        
+        if path in dir[0:len(path)]:
+            
+            
+            directories[i] = "#" + dir
+        i += 1
+    
+
+    
+
+    update_fs2(fs_name)
+
+    return 0
+
+def mkdir(file_system, internal_directory):
+    
+    valid = False
+    dir = internal_directory
+    if internal_directory[0] == "/":
+        dir = internal_directory[1:]
+    string_path = ""
+    splitter = dir.split("/")
+
+    string_path = splitter[0]
+    splitter = splitter[1:]
+    valid = validate_directory(string_path, mk=True)
+    for i in splitter:
+        string_path += "/" + i
+        
+        valid = validate_directory(string_path, mk = True)
+        
+    if valid == False:
+        stderr.write("Directory already exists \n")
+        exit(1)
+
+
+    update_fs2(file_system)
+    
+    return 0 
+
+
+
+#Edit notes
+def edit_note(path, external_file):
+    
+    splitter = path.rsplit("/", 1)
+    
+    file_name = splitter[-1]
+    file_path = splitter[0]
+    is_path = False
+    if path.find("/") > 0:
+        is_path = True
+    updated_note = []
+    if file_path == file_name and not is_path:
+        file_path = "root"
+    with open(external_file) as f:
+        lines = f.readlines()
+
+        for line in lines:
+            updated_note.append(line.strip())
+        f.close()
+
+    for note in notes:
+        if file_path == note.dir and file_name == note.name:
+
+            #note.notes = updated_note
+            delete_note(note) 
+            
+    string = "@" + file_name
+    
+    if file_path != "root":
+        
+        string = "@" + file_path + "/" + file_name 
+    
+    read_filesystem.append(string + "\n")
+    for line in updated_note:
+        read_filesystem.append(" " + line + "\n")
+    return updated_note
+
+def get_dir_size(dir):
+    size = 0
+
+    for note in notes:
+        if note.dir[0:len(dir)] == dir and dir != "root":
+            size += len(note.notes)
+        elif dir == "root":
+            size += len(note.notes)
+    
+    return size
+
+
+#Delete note
+
+def delete_note(note):
+    file_path = "@" + note.name
+    file_read = False
+    if note.dir != "root":
+        file_path = "@" + note.dir + "/" + note.name
+    i = 0
+    for line in read_filesystem:
+        
+        if file_read == True and line[0] == " ":
+            read_filesystem[i] = "#" + line[1:]
+
+        if file_read == True and line[0] != " ":
+            break
+        
+        if line.rstrip() == file_path:
+            read_filesystem[i] = "#" + read_filesystem[i][1:]
+            file_read = True
+
+        
+        i += 1
+
+
+#Check if the file exists
+def in_file_exists(path, cout = False):
+    valid = False
+    is_path = False
+
+    if path[-1] == "/" or path[-2:] == ".." or path[-1] == ".":
+        stderr.write("Error code 1: Invalid internal file name \n")
+        exit(1)
+
+    if path.find("/") > 0:
+        is_path = True
+    splitter = path.rsplit("/", 1)
+    file_name = splitter[-1]
+    file_path = splitter[0]
+
+    if file_path == file_name and is_path == False:
+        file_path = "root"
+    
+    
+
+    if file_path  in directories and cout == False:
+        valid = True
+    
+    if cout == True:
+        for note in notes:
+            if note.dir == file_path and note.name == file_name:
+                valid = True
+
+    return valid
+
+
+
+#Check if file is valid
+def valid_note(path):
+    valid = True
+    is_path = False
+    if path.find("/") > 0:
+        is_path = True
+
+    splitter = path.rsplit("/", 1)
+    file_name = splitter[-1]
+    file_path = splitter[0]
+    
+    
+    if file_path == file_name and is_path == False:
+        
+        file_path = "root"
+    
+    for i in notes:
+        if i.name == file_name and i.dir == file_path:
+            
+            valid = False
+    
+    if file_path not in directories:
+       
+        valid = False
+    return valid
+
+    
+#Get file/note get a file from the directory
+
+def get_note(path):
+    note = []
+    splitter = path.rsplit("/", 1)
+    file_name = splitter[-1]
+    file_path = splitter[0]
+
+    if file_path == file_name:
+        file_path = "root"
+    
+    for i in notes:
+        if i.name == file_name and i.dir == file_path:
+            note = i.notes
+            
+            break
+    
+    return note
+            
+
+    
 
 
 if __name__ == "__main__":
     main()
-
-
-    
 

@@ -1,1 +1,58 @@
--- Assume empty 
+-- Assume empty -- 
+
+Notes file format 
+test1.notes - Empty valid notes file 
+test1_inv.notes - Empty invalid notes files (Does not have first line)
+test2_dupnote.notes - Two duplicate note names with the same dir 
+test3_dupdir.notes - Two duplicate dir names
+
+
+Using the commands below on an empty FS, we can test the program
+#First assume that the FS will be empty. The FS will also need the .notes extenstion to work
+
+Test 1. Input any command with ./VSFS_2 <command_name> <FS_name> <More args>
+Result 1. Leads to an "Invalid VSFS" error and an exit code of 1
+
+Test 2. Following the previous test, add "NOTES V1.0" to the first line and add a new lime
+    inputting any command will finally work
+Result 2.F 
+
+Test 3. Add a file using ./VSFS_2 copyin <fs_name> <ext_file> <in_file>
+3.1 Adding a wrong internal path/file - Invalid internal file name Exit code : 1
+3.2 Adding a wrong external path/file - No such external file or directory Eixt code : 1
+3.3 Adding an internal file with invalid dir - Invalid internal file name Exit code : 1
+3.4 Correct internal and external file - No output Exit code: 0
+
+Test 4. Adding a valid ext_file to the same in_file name using 
+./VSFS_2 copyin <fs_name> <ext_file> <in_file>
+
+Result 4 - Previous existing file and records have a '#' appended at the start. 
+Append internal file to end of filesystem
+
+    Exit code : 0
+
+Test 5. Outputing to ext_file ./VSFS_2 copyin <fs_name> <ext_file> <in_file>
+5.1  Invalid ext_file/path - No such external file or directory Exit Code: 1
+5.2 Invalid in_file/path - Internal File does not exist Exit Code: 1
+5.3 Valid in_file/ext_file - No output Exit Code: 0
+
+Test 6. Making a directory ./VSFS_2 mkdir <fs_name> <dir_file>
+6.1 Existing dir_file/path - Directory already exists Exit Code: 1
+6.2 Valid dir - No Output Exit Code: 0
+6.3 Valid path - No Output Exit Code: 0
+
+Test 7. Removing a file ./VSFS_2 rm <fs_name> <in_file>
+7.1 Invalid file - File does not exit Exit Code: 1
+7.2 Valid file - No Output Exit Code: 0 
+
+Test 8. Removing a directory ./VSFS_2 rmdir <fs_name> <dir>
+8.1 Invalid dir - Directory does not exist Exit Code: 1
+8.2 Valid dir - Not output Exit Code: 0
+
+Test 9. Defrag via /VSFS_2 defrag <fs_name> 
+Result 9 - "Cleans" the filesystem and orders (similar to ls -lR) Exit Code :0 
+
+Test 10. List via /VSFS_2 list <fs_name>
+Result 10 - First lists all root files and directory and it's files following the
+    AAAAAA NNN OOOOOOOO GGGGGGGG SSSSSSSS DATETIME [PATH/]FILENAME format
+    Exit Code: 0

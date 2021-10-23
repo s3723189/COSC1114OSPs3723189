@@ -1,0 +1,14 @@
+NOTES V1.0
+@test
+ This is the first note. Notice the leading space.
+ Another was
+=test/
+@test/test
+ This is the first note. Notice the leading space.
+ Another was
+=test/test/
+@test/test/test
+ This is the first note. Notice the leading space.
+ Another was
+=test/test/test/
+=test/test/test/test/
