@@ -181,11 +181,13 @@ def validate_fs(file_system):
                     notes.append(file)
                     in_file = False
                 
+                string = line[1:].strip()
+                for note in notes:
+                    note_string = note.dir + "/" + note.name
+                    if string == note_string:
+                        stderr.write("Invalid VSFS - Duplicate note/file \n")
+                        exit(1)
                 
-                if line[1:].strip() in [x.name for x in notes]:
-                    stderr.write("Invalid VSFS - Duplicate note/file \n")
-                    exit(1)
-
                 if not valid_note(line.strip()[1:]):
                     stderr.write("Invalid VSFS - Invalid note \n")
                     exit(1)
@@ -442,10 +444,13 @@ def copyin(fs_name,external_file, interal_file):
     out_valid = valid_external_dir(external_file)
     
         
-    if not in_valid or not out_valid:
-        stderr.write("No such file or directory \n")
+    if not in_valid:
+        stderr.write("Invalid internal file name \n")
         exit(1)
 
+    if not out_valid:
+        stderr.write("No such external file or directory \n")
+        exit(1)
     edit_note(interal_file, external_file)
     
     update_fs2(fs_name)
@@ -483,7 +488,7 @@ def rm(fs_name, internal_file, is_mkdir = False):
     in_valid = in_file_exists(internal_file, cout = True)
     
     if not in_valid:
-        stderr.write("File does not exist \n")
+        stderr.write("Internal File does not exist \n")
         exit(-1)
     is_path = False
     if internal_file.find("/") > 0:
@@ -512,25 +517,58 @@ def rmdir(fs_name, internal_path):
     if exists:
         print("Directory does not exist")
         exit(1)
+    if internal_path == "root":
+        print("Invalid directory name")
+        exit(1)
     path = internal_path
     if path[0] == "/":
         path = path[1:]
     
-    
+    splitter = path.split("/")
     for note in notes:
-        if path in note.dir[0:len(path)]:
-            note_path = note.dir + "/" + note.name
-            rm(fs_name, note_path, is_mkdir=True)
-
-    i = 0
-    for dir in directories:
         
-        if path in dir[0:len(path)]:
+        if path in note.dir:
+            note_path = note.dir + "/" + note.name
+            splitter_2 = note_path.split("/")
+            same_dir = True
+            i = 0
+            for element in splitter:
             
+                
+                if len(splitter) > len(splitter_2):
+                    same_dir = False
+                    break
+
+                if element != splitter_2[i]:
+                    
+                    same_dir = False
+                i += 1
+            if same_dir:
+                rm(fs_name, note_path, is_mkdir=True)
+
+   
+    j = 0
+    for dir in directories:
+        i = 0
+        
+        same_dir = True
+        for element in splitter:
+            splitter_2 = dir.split("/")
             
-            directories[i] = "#" + dir
-        i += 1
-    
+            if len(splitter) > len(splitter_2):
+                
+                same_dir = False
+                break
+           
+            if element != splitter_2[i]:
+                
+                same_dir = False
+            i += 1
+        if same_dir:
+        
+           directories[j] = "#" + dir
+        
+        j += 1
 
     
 
@@ -645,7 +683,7 @@ def in_file_exists(path, cout = False):
     is_path = False
 
     if path[-1] == "/" or path[-2:] == ".." or path[-1] == ".":
-        stderr.write("Error code 1: Invalid internal file name \n")
+        stderr.write("Invalid internal file name \n")
         exit(1)
 
     if path.find("/") > 0:

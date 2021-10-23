@@ -1,14 +1,20 @@
 NOTES V1.0
-@test
+#internal
+#This is the first note. Notice the leading space.
+#Another was
+@internal2
  This is the first note. Notice the leading space.
  Another was
-=test/
-@test/test
+=dir/
+@dir/internal
  This is the first note. Notice the leading space.
  Another was
-=test/test/
-@test/test/test
- This is the first note. Notice the leading space.
- Another was
-=test/test/test/
-=test/test/test/test/
+#dir2/
+#dir2/dir3/
+#dir2/dir3/internal2
+#This is the first note. Notice the leading space.
+#Another was
+#dir2/dir3/dir4/
+#dir2/dir3/dir4/internal
+#This is the first note. Notice the leading space.
+#Another was
