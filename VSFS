@@ -7,7 +7,10 @@ import stat
 from pwd import getpwuid
 from grp import getgrgid
 import datetime
-import errno
+
+#Implementation by Gabriel Cary Lat (s3723189)
+#Attempted up to DI
+
 class File_Note:
     def __init__(self, path):
         splitter = path.rsplit("/",1)
@@ -709,7 +712,8 @@ def edit_note(path, external_file):
 
 def get_dir_size(dir):
     size = 0
-
+    #Get size of notes in dir
+    
     for note in notes:
         if note.dir[0:len(dir)] == dir and dir != "root":
             size += len(note.notes)
@@ -827,8 +831,6 @@ def get_note(path):
             
 
     
-
-
 if __name__ == "__main__":
     main()
 
