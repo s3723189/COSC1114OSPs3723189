@@ -277,34 +277,34 @@ def defrag_fs(file_system):
         for dir in directories_updated:
             #Print dir names if not home/root
             if dir != "root":
-                string = "=" + dir + "/\n"
+                dir_string = "=" + dir + "/\n"
                 
                 if dir[0] == "#":
                     
-                    string = dir + "/ \n"
-                f.write(string)
+                    dir_string = dir + "/ \n"
+                f.write(dir_string)
                 
                 path = dir 
                 
                 #Writing notes to FS 
                 for note in notes:
                     if note.dir == path:
-                        string = "@" + path + "/" + note.name + "\n"  
-                        f.write(string)
+                        note_string = "@" + path + "/" + note.name + "\n"  
+                        f.write(note_string)
                         for record in note.notes:
-                            string = " " + record 
-                            f.write(string)
+                            note_string = " " + record 
+                            f.write(note_string)
             else:
                 #Same as above instead
                 #Prevents root files from writing @root/file_name
                 for note in notes:
                     
                     if note.dir == "root":
-                            string = "@" + note.name + "\n"
-                            f.write(string)
+                            note_string = "@" + note.name + "\n"
+                            f.write(note_string)
                             for record in note.notes:
-                                string = " " + record 
-                                f.write(string)
+                                note_string = " " + record 
+                                f.write(note_string)
         f.close()
 
 
@@ -316,18 +316,18 @@ def update_fs(file_system):
         #Check if the note is deleted
         if note.is_deleted == True:
             index = 0
-            string = "@" + note.dir + "/" + note.name
+            note_string = "@" + note.dir + "/" + note.name
             #set a string to the note's appearance in the .notes file
             #if note is in root, dont add root to string
             if note.dir == "root":
-                string = "@" + note.name
+                note_string = "@" + note.name
             note_read = False
             for line in read_filesystem:
                 #If string is the same as the line in the file read
                 #Add '#' to the start of that line as it is deleted
                 if note_read == True and line[0] != " ":
                     note_read = False
-                if string == line.rstrip():
+                if note_string == line.rstrip():
                     if note.dir != "root":
                         read_filesystem[index] = "#" + note.dir + "/" + note.name + "\n"
                     else:
@@ -349,13 +349,13 @@ def update_fs(file_system):
         for line in read_filesystem:
             
             #let string equal to how the dir looks in .notes
-            string = "=" + dir.rstrip() + "/"
+            dir_string = "=" + dir.rstrip() + "/"
             if dir[0] == "#":
-                string = "=" + dir[1:].rstrip() + "/"
+                dir_string = "=" + dir[1:].rstrip() + "/"
             
             #If dir is deleted then append "#" at the beginning
             #else add "=" 
-            if string == line.rstrip("\n"):
+            if dir_string == line.rstrip("\n"):
                 if dir[0] != "#":
                     read_filesystem[index] = "=" + dir + "/" + "\n"
                 else:
@@ -696,12 +696,12 @@ def edit_note(path, external_file):
             delete_note(note) 
             
     #Append to read_filesystem
-    string = "@" + file_name
+    note_string = "@" + file_name
     if file_path != "root":
         
-        string = "@" + file_path + "/" + file_name 
+        note_string = "@" + file_path + "/" + file_name 
     
-    read_filesystem.append(string + "\n")
+    read_filesystem.append(note_string + "\n")
 
     for line in updated_note:
         read_filesystem.append(" " + line[:254] + "\n")
@@ -778,7 +778,7 @@ def in_file_exists(path, cout = False):
 
 
 
-#Check if file exists
+#Check if the note exists
 def note_exists(path):
     valid = True
     is_path = False
